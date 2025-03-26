@@ -1,28 +1,20 @@
-import logging
-from aiogram import Bot, Dispatcher, types
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from datetime import datetime
+from aiogram import Router, types
 from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from datetime import datetime
-import asyncio
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-API_TOKEN = 'token'
-
-bot = Bot(token=API_TOKEN)
-dp = Dispatcher()
+router = Router()
 
 events = {}
 participants = {}
-ADMIN_ID = 'ADMIN_ID'
 
-@dp.message(Command("start"))
+@router.message(Command("start"))
 async def cmd_start(message: types.Message):
     await message.answer("Привет! Используй /help, чтобы увидеть список команд.")
 
-@dp.message(Command("help"))
+
+@router.message(Command("help"))
 async def cmd_help(message: types.Message):
     help_text = """
 📜 **Команды:**
@@ -36,11 +28,13 @@ async def cmd_help(message: types.Message):
     """
     await message.answer(help_text)
 
-@dp.message(Command("myid"))
+
+@router.message(Command("myid"))
 async def cmd_myid(message: types.Message):
     await message.answer(f"Ваш ID: {message.from_user.id}")
 
-@dp.message(Command("addevent"))
+
+@router.message(Command("addevent"))
 async def cmd_add_event(message: types.Message):
     try:
         args = message.text.split(maxsplit=3)
@@ -63,7 +57,8 @@ async def cmd_add_event(message: types.Message):
     except ValueError:
         await message.answer("Формат: /addevent <название> <ссылка> <дата> [время]")
 
-@dp.message(Command("deleteevent"))
+
+@router.message(Command("deleteevent"))
 async def cmd_delete_event(message: types.Message):   
     try:
         event_id = int(message.text.split()[1])
@@ -75,7 +70,8 @@ async def cmd_delete_event(message: types.Message):
     except (IndexError, ValueError):
         await message.answer("Формат: /deleteevent <ID>")
 
-@dp.message(Command("events"))
+
+@router.message(Command("events"))
 async def cmd_show_events(message: types.Message):
     if not events:
         await message.answer("Нет мероприятий.")
@@ -89,7 +85,8 @@ async def cmd_show_events(message: types.Message):
     builder.adjust(1)
     await message.answer("Выберите мероприятие:", reply_markup=builder.as_markup())
 
-@dp.callback_query(lambda c: c.data.startswith('event_'))
+
+@router.callback_query(lambda c: c.data.startswith('event_'))
 async def process_event_callback(callback_query: types.CallbackQuery):
     event_id = int(callback_query.data.split('_')[1])
     event = events.get(event_id)
@@ -111,7 +108,8 @@ async def process_event_callback(callback_query: types.CallbackQuery):
     )
     await callback_query.answer()
 
-@dp.callback_query(lambda c: c.data.startswith('toggle_'))
+
+@router.callback_query(lambda c: c.data.startswith('toggle_'))
 async def process_toggle_callback(callback_query: types.CallbackQuery):
     event_id = int(callback_query.data.split('_')[1])
     user_id = callback_query.from_user.id
@@ -125,7 +123,8 @@ async def process_toggle_callback(callback_query: types.CallbackQuery):
     
     await process_event_callback(callback_query)
 
-@dp.callback_query(lambda c: c.data.startswith('list_'))
+
+@router.callback_query(lambda c: c.data.startswith('list_'))
 async def process_list_callback(callback_query: types.CallbackQuery):
     event_id = int(callback_query.data.split('_')[1])
     users = participants.get(event_id, set())
@@ -145,9 +144,3 @@ async def process_list_callback(callback_query: types.CallbackQuery):
     text = "Участники:\n" + "\n".join(users_list)
     text = text[:200] + "..." if len(text) > 200 else text
     await callback_query.answer(text, show_alert=True)
-
-async def main():
-    await dp.start_polling(bot)
-
-if __name__ == '__main__':
-    asyncio.run(main())
